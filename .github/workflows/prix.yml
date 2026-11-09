@@ -1,0 +1,32 @@
+name: Prix du jour
+
+on:
+  schedule:
+    - cron: "0 22 * * *"   # 22h00 UTC = 02h00 à La Réunion
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Lancer le robot
+        env:
+          ROBOT_CONTACT: ${{ vars.ROBOT_CONTACT }}
+        run: python -m robot.run --out data
+      - name: Publier les prix
+        if: always()
+        run: |
+          git config user.name "prix-bot"
+          git config user.email "prix-bot@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "Prix du $(date -u +%F)"
+          git push
